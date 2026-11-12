@@ -1,0 +1,560 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Carga de documentos · Gaceta IA</title>
+<style>
+:root {
+  --azul: #0B2D5C; --rojo: #A32035;
+  --fondo: #f4f6fa; --panel: #ffffff; --texto: #1b2433; --suave: #5b6779;
+  --borde: #d9dee7; --ok: #1d7a46; --aviso: #9a6400; --error: #b42318;
+  --ok-bg: #e7f5ec; --aviso-bg: #fff4dc; --error-bg: #fdecea; --info-bg: #e8eef8;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fondo: #0f1522; --panel: #182133; --texto: #e6ebf3; --suave: #9aa6b8;
+    --borde: #2b3850; --ok: #5fd38f; --aviso: #f0b64b; --error: #ff8a80;
+    --ok-bg: #173325; --aviso-bg: #3a2e14; --error-bg: #3d1a1a; --info-bg: #1d2a42;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+       background: var(--fondo); color: var(--texto); }
+header { background: var(--azul); color: #fff; padding: 12px 20px; display: flex;
+         align-items: center; gap: 16px; flex-wrap: wrap; border-bottom: 4px solid var(--rojo); }
+header h1 { font-size: 18px; margin: 0; flex: 1; }
+header a { color: #fff; opacity: .85; }
+main { max-width: 1180px; margin: 0 auto; padding: 16px; }
+.panel { background: var(--panel); border: 1px solid var(--borde); border-radius: 10px;
+         padding: 16px; margin-bottom: 16px; }
+.fila { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+.estado span { display: inline-block; padding: 3px 10px; border-radius: 99px; font-size: 13px;
+               background: var(--info-bg); margin: 2px 4px 2px 0; }
+.chip-ok { background: var(--ok-bg) !important; color: var(--ok); }
+.chip-aviso { background: var(--aviso-bg) !important; color: var(--aviso); }
+.chip-error { background: var(--error-bg) !important; color: var(--error); }
+nav { display: flex; gap: 4px; margin-bottom: 12px; flex-wrap: wrap; }
+nav button { border: 1px solid var(--borde); background: var(--panel); color: var(--texto);
+             padding: 8px 14px; border-radius: 8px; cursor: pointer; font: inherit; }
+nav button.activo { background: var(--azul); color: #fff; border-color: var(--azul); }
+label { font-size: 13px; color: var(--suave); display: block; margin-bottom: 3px; }
+input[type=text], input[type=password], input[type=number], select, textarea {
+  width: 100%; padding: 8px 10px; border: 1px solid var(--borde); border-radius: 7px;
+  background: var(--fondo); color: var(--texto); font: inherit; }
+textarea { min-height: 260px; font: 13px/1.45 ui-monospace, Consolas, monospace; }
+.campo { flex: 1 1 220px; }
+.check { display: flex; gap: 6px; align-items: center; font-size: 14px; color: var(--texto); }
+button.prim, button.sec, button.peligro { border: 0; border-radius: 8px; padding: 9px 16px;
+  cursor: pointer; font: inherit; font-weight: 600; }
+button.prim { background: var(--azul); color: #fff; }
+button.sec { background: var(--info-bg); color: var(--texto); }
+button.peligro { background: var(--error-bg); color: var(--error); }
+button:disabled { opacity: .5; cursor: default; }
+#zona { border: 2px dashed var(--borde); border-radius: 10px; padding: 28px; text-align: center;
+        color: var(--suave); cursor: pointer; }
+#zona.encima { border-color: var(--azul); background: var(--info-bg); }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--borde); vertical-align: top; }
+th { color: var(--suave); font-weight: 600; font-size: 12px; text-transform: uppercase; }
+td .acciones { display: flex; gap: 6px; flex-wrap: wrap; }
+td .acciones button { padding: 5px 10px; font-size: 13px; }
+.barra { height: 6px; background: var(--borde); border-radius: 3px; overflow: hidden; margin-top: 4px; }
+.barra div { height: 100%; background: var(--rojo); transition: width .4s; }
+.msj { padding: 10px 12px; border-radius: 8px; margin: 6px 0; font-size: 14px; }
+.msj.error { background: var(--error-bg); color: var(--error); }
+.msj.aviso { background: var(--aviso-bg); color: var(--aviso); }
+.msj.ok { background: var(--ok-bg); color: var(--ok); }
+.msj.info { background: var(--info-bg); }
+.oculto { display: none !important; }
+.mono { font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
+.suave { color: var(--suave); font-size: 13px; }
+dialog { border: 1px solid var(--borde); border-radius: 12px; padding: 0; width: min(1000px, 96vw);
+         background: var(--panel); color: var(--texto); }
+dialog::backdrop { background: rgba(5, 12, 25, .55); }
+dialog .cab { padding: 14px 18px; border-bottom: 1px solid var(--borde); display: flex; align-items: center; gap: 10px; }
+dialog .cab h2 { margin: 0; font-size: 17px; flex: 1; }
+dialog .cuerpo { padding: 14px 18px; max-height: 72vh; overflow: auto; }
+dialog .pie { padding: 12px 18px; border-top: 1px solid var(--borde); display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px 14px; }
+.dato b { display: block; font-size: 12px; color: var(--suave); font-weight: 600; }
+#toast { position: fixed; bottom: 18px; right: 18px; max-width: 420px; z-index: 50; }
+@media (max-width: 640px) { th:nth-child(n+4), td:nth-child(n+4) { display: none; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Gaceta IA · Carga de documentos</h1>
+  <a href="/">Volver al chat</a>
+  <a href="/docs" target="_blank">API (/docs)</a>
+</header>
+<main>
+  <section class="panel" id="panelToken">
+    <div class="fila">
+      <div class="campo">
+        <label for="token">Token de carga (GACETA_CARGA_TOKEN o GACETA_ADMIN_TOKEN)</label>
+        <input id="token" type="password" autocomplete="off" placeholder="pega el token aqui">
+      </div>
+      <button class="prim" id="guardarToken">Entrar</button>
+    </div>
+    <div id="tokenMsj"></div>
+  </section>
+
+  <section class="panel estado" id="estado"><span>Cargando estado...</span></section>
+
+  <nav>
+    <button data-tab="subir" class="activo">Subir archivos</button>
+    <button data-tab="texto">Escribir texto</button>
+    <button data-tab="trabajos">Trabajos <span id="nTrab"></span></button>
+    <button data-tab="docs">Documentos cargados <span id="nDocs"></span></button>
+  </nav>
+
+  <section class="panel" id="tab-subir">
+    <div id="zona">
+      <b>Arrastra aqui PDFs, imagenes, .txt, .md o .json</b><br>
+      <span class="suave">o haz clic para elegirlos (puedes marcar varios)</span>
+      <input id="archivos" type="file" multiple class="oculto"
+             accept=".pdf,.png,.jpg,.jpeg,.tif,.tiff,.bmp,.webp,.txt,.md,.json">
+    </div>
+    <div class="grid2" style="margin-top:14px">
+      <div><label for="modo">Como leer los PDF</label>
+        <select id="modo">
+          <option value="auto">Automatico: texto si lo trae, OCR si es escaneado</option>
+          <option value="ocr">Forzar OCR (PaddleOCR-VL)</option>
+          <option value="texto">Solo la capa de texto (sin OCR)</option>
+        </select></div>
+      <div><label for="tipoSubir">Tipo de documento</label>
+        <input id="tipoSubir" type="text" list="tipos" value="Resolución"></div>
+      <div><label for="etqSubir">Etiquetas (vacio = el organo del encabezado)</label>
+        <input id="etqSubir" type="text" placeholder="HCF, Posgrado"></div>
+      <div><label for="pagMax">Paginas maximas por PDF (0 = todas)</label>
+        <input id="pagMax" type="number" min="0" value="0"></div>
+    </div>
+    <div class="fila" style="margin-top:12px">
+      <label class="check"><input type="checkbox" id="revisarSubir" checked> Revisar antes de indexar</label>
+      <label class="check"><input type="checkbox" id="llmSubir" checked> Pasar por el LLM (tema, personas, citas)</label>
+    </div>
+    <div id="subidas"></div>
+  </section>
+
+  <section class="panel oculto" id="tab-texto">
+    <p class="suave" style="margin-top:0">Para informacion que no viene en un archivo: un comunicado, una
+      aclaracion, una respuesta frecuente. Se indexa igual que una resolucion.</p>
+    <div class="grid2">
+      <div><label for="tTitulo">Titulo (es lo que se muestra en cada cita)</label>
+        <input id="tTitulo" type="text" placeholder="Comunicado: horario de inscripciones 2026"></div>
+      <div><label for="tTipo">Tipo de documento</label>
+        <input id="tTipo" type="text" list="tipos" value="Información"></div>
+      <div><label for="tEtq">Etiquetas</label><input id="tEtq" type="text"></div>
+    </div>
+    <div style="margin-top:10px"><label for="tCont">Contenido</label>
+      <textarea id="tCont" placeholder="Escribe o pega el texto"></textarea></div>
+    <div class="fila" style="margin-top:10px">
+      <label class="check"><input type="checkbox" id="tRevisar" checked> Revisar antes de indexar</label>
+      <label class="check"><input type="checkbox" id="tLlm" checked> Pasar por el LLM</label>
+      <span style="flex:1"></span>
+      <button class="prim" id="tEnviar">Cargar texto</button>
+    </div>
+  </section>
+
+  <section class="panel oculto" id="tab-trabajos">
+    <div class="fila" style="margin-bottom:8px">
+      <span class="suave" style="flex:1">Cada archivo es un trabajo: se lee (OCR si hace falta), se revisa y se indexa.
+        La lista se actualiza sola.</span>
+      <button class="sec" id="refrescarTrab">Actualizar</button>
+    </div>
+    <table><thead><tr><th>Archivo / titulo</th><th>Estado</th><th>Revision</th><th>Documento</th><th></th></tr></thead>
+      <tbody id="tablaTrab"></tbody></table>
+  </section>
+
+  <section class="panel oculto" id="tab-docs">
+    <div class="fila" style="margin-bottom:8px">
+      <span class="suave" style="flex:1">Documentos cargados desde aqui. Los del corpus de Paperless no se editan ni se borran desde esta pagina.</span>
+      <button class="sec" id="grafoPend">Pasar pendientes por el LLM</button>
+      <button class="sec" id="refrescarDocs">Actualizar</button>
+    </div>
+    <table><thead><tr><th>Documento</th><th>Titulo</th><th>Tipo</th><th>Origen</th><th>Grafo</th><th></th></tr></thead>
+      <tbody id="tablaDocs"></tbody></table>
+  </section>
+</main>
+
+<datalist id="tipos">
+  <option value="Resolución"><option value="Reglamento"><option value="Convocatoria">
+  <option value="Comunicado"><option value="Instructivo"><option value="Información">
+</datalist>
+
+<dialog id="dlg">
+  <div class="cab"><h2 id="dlgTitulo">Revision</h2><button class="sec" id="dlgCerrar">Cerrar</button></div>
+  <div class="cuerpo" id="dlgCuerpo"></div>
+  <div class="pie" id="dlgPie"></div>
+</dialog>
+<div id="toast"></div>
+
+<script>
+'use strict';
+const $ = (s) => document.querySelector(s);
+const ESTADOS = {
+  en_cola: ['En cola', 'chip-aviso'], extrayendo: ['Leyendo', 'chip-aviso'],
+  revision: ['Para revisar', 'chip-aviso'], indexando: ['Indexando', 'chip-aviso'],
+  indexado: ['Indexado', 'chip-ok'], error: ['Error', 'chip-error'],
+};
+let token = sessionStorage.getItem('gacetaCargaToken') || '';
+let pestana = 'subir';
+let sondeo = null;
+
+function esc(v) {
+  return String(v ?? '').replace(/[&<>"']/g, (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+}
+function toast(texto, clase = 'info', ms = 4500) {
+  const d = document.createElement('div');
+  d.className = 'msj ' + clase; d.textContent = texto;
+  $('#toast').appendChild(d); setTimeout(() => d.remove(), ms);
+}
+async function api(ruta, opciones = {}) {
+  const o = Object.assign({}, opciones);
+  o.headers = Object.assign({'X-Admin-Token': token}, o.headers || {});
+  if (o.json !== undefined) {
+    o.body = JSON.stringify(o.json); o.headers['Content-Type'] = 'application/json'; delete o.json;
+  }
+  const r = await fetch(ruta, o);
+  let datos = null;
+  const tipo = r.headers.get('content-type') || '';
+  datos = tipo.includes('json') ? await r.json() : await r.text();
+  if (!r.ok) {
+    const e = new Error((datos && datos.detail) ? (typeof datos.detail === 'string' ? datos.detail : JSON.stringify(datos.detail)) : ('HTTP ' + r.status));
+    e.status = r.status; e.datos = datos; throw e;
+  }
+  return datos;
+}
+
+// ── token ──
+$('#token').value = token;
+$('#guardarToken').onclick = async () => {
+  token = $('#token').value.trim();
+  sessionStorage.setItem('gacetaCargaToken', token);
+  await refrescarTodo();
+};
+
+// ── pestañas ──
+document.querySelectorAll('nav button').forEach((b) => b.onclick = () => {
+  pestana = b.dataset.tab;
+  document.querySelectorAll('nav button').forEach((x) => x.classList.toggle('activo', x === b));
+  ['subir', 'texto', 'trabajos', 'docs'].forEach((t) => $('#tab-' + t).classList.toggle('oculto', t !== pestana));
+  if (pestana === 'docs') cargarDocs();
+  if (pestana === 'trabajos') cargarTrabajos();
+});
+
+// ── estado ──
+async function cargarEstado() {
+  try {
+    const e = await api('/api/carga/estado');
+    $('#tokenMsj').innerHTML = '';
+    $('#panelToken').classList.toggle('oculto', true);
+    const ocr = e.ocr || {};
+    let ocrTxt, ocrClase;
+    if (!ocr.disponible) { ocrTxt = 'OCR no disponible'; ocrClase = 'chip-error'; }
+    else if (ocr.listo === false && ocr.cargando) { ocrTxt = 'OCR cargando el modelo'; ocrClase = 'chip-aviso'; }
+    else if (ocr.listo === false && ocr.error) { ocrTxt = 'OCR con error'; ocrClase = 'chip-error'; }
+    else { ocrTxt = 'OCR ' + (ocr.modelo || 'listo') + (ocr.dispositivo ? ' · ' + ocr.dispositivo : ''); ocrClase = 'chip-ok'; }
+    const t = e.trabajos || {};
+    $('#estado').innerHTML =
+      `<span class="${e.motor_disponible ? 'chip-ok' : 'chip-aviso'}">${e.motor_disponible ? 'Base lista' : 'El motor esta cargando el indice...'}</span>` +
+      `<span class="${ocrClase}" title="${esc(ocr.error || ocr.url || '')}">${esc(ocrTxt)}</span>` +
+      `<span class="${e.llm ? 'chip-ok' : 'chip-aviso'}">LLM: ${esc(e.llm || 'no cargado')}</span>` +
+      `<span>Cola: ${e.cola}</span>` +
+      `<span>Documentos cargados: ${e.documentos}</span>` +
+      (t.revision ? `<span class="chip-aviso">${t.revision} para revisar</span>` : '') +
+      (t.error ? `<span class="chip-error">${t.error} con error</span>` : '') +
+      (e.grafo_pendiente && e.grafo_pendiente.length ? `<span class="chip-aviso">${e.grafo_pendiente.length} esperando el LLM</span>` : '') +
+      (ocr.disponible ? '' : `<div class="suave" style="margin-top:6px">${esc(ocr.error || '')}</div>`);
+    $('#nDocs').textContent = e.documentos ? '(' + e.documentos + ')' : '';
+    return e;
+  } catch (err) {
+    $('#panelToken').classList.remove('oculto');
+    const clase = err.status === 503 ? 'aviso' : 'error';
+    $('#tokenMsj').innerHTML = `<div class="msj ${clase}">${esc(err.message)}</div>`;
+    $('#estado').innerHTML = '<span class="chip-error">Sin acceso</span>';
+    return null;
+  }
+}
+
+// ── subir archivos ──
+const zona = $('#zona');
+zona.onclick = () => $('#archivos').click();
+zona.ondragover = (ev) => { ev.preventDefault(); zona.classList.add('encima'); };
+zona.ondragleave = () => zona.classList.remove('encima');
+zona.ondrop = (ev) => { ev.preventDefault(); zona.classList.remove('encima'); subir([...ev.dataTransfer.files]); };
+$('#archivos').onchange = (ev) => { subir([...ev.target.files]); ev.target.value = ''; };
+
+async function subir(archivos) {
+  for (const f of archivos) {
+    const linea = document.createElement('div');
+    linea.className = 'msj info'; linea.textContent = 'Subiendo ' + f.name + '...';
+    $('#subidas').prepend(linea);
+    const fd = new FormData();
+    fd.append('archivo', f);
+    fd.append('modo', $('#modo').value);
+    fd.append('revisar', $('#revisarSubir').checked);
+    fd.append('enriquecer', $('#llmSubir').checked);
+    fd.append('tipo_documento', $('#tipoSubir').value);
+    if ($('#etqSubir').value.trim()) fd.append('etiquetas', $('#etqSubir').value);
+    fd.append('paginas_max', $('#pagMax').value || 0);
+    try {
+      const r = await api('/api/carga/archivo', {method: 'POST', body: fd});
+      linea.className = 'msj ok';
+      linea.textContent = f.name + ': recibido (' + r.trabajos.length + ' trabajo' + (r.trabajos.length > 1 ? 's' : '') + '). Seguilo en "Trabajos".';
+    } catch (err) {
+      linea.className = 'msj error'; linea.textContent = f.name + ': ' + err.message;
+    }
+  }
+  cargarTrabajos(); cargarEstado();
+}
+
+// ── texto a mano ──
+$('#tEnviar').onclick = async () => {
+  try {
+    await api('/api/carga/texto', {method: 'POST', json: {
+      titulo: $('#tTitulo').value, contenido: $('#tCont').value, tipo_documento: $('#tTipo').value,
+      etiquetas: $('#tEtq').value, revisar: $('#tRevisar').checked, enriquecer: $('#tLlm').checked}});
+    toast('Texto recibido. Revisalo en "Trabajos".', 'ok');
+    $('#tCont').value = ''; $('#tTitulo').value = '';
+    document.querySelector('nav button[data-tab=trabajos]').click();
+  } catch (err) { toast(err.message, 'error', 8000); }
+};
+
+// ── trabajos ──
+function progresoHtml(t) {
+  const p = t.progreso;
+  if (!p) return '';
+  const fase = p.fase === 'ocr' ? 'OCR' : 'Leyendo texto';
+  if (!p.total) return `<div class="suave">${fase}...</div>`;
+  const pct = Math.round(100 * (p.hecho || 0) / p.total);
+  return `<div class="suave">${fase}: pagina ${p.hecho} de ${p.total}</div><div class="barra"><div style="width:${pct}%"></div></div>`;
+}
+function grafoHtml(g) {
+  if (!g) return '';
+  const nombres = {pendiente: 'grafo pendiente', en_curso: 'grafo en curso', ok: 'en el grafo', error: 'grafo con error', omitido: 'sin grafo'};
+  const clase = g.estado === 'ok' ? 'chip-ok' : (g.estado === 'error' ? 'chip-error' : 'chip-aviso');
+  const det = typeof g.detalle === 'string' ? g.detalle : '';
+  return `<span class="${clase}" title="${esc(det)}">${esc(nombres[g.estado] || g.estado)}</span>`;
+}
+async function cargarTrabajos() {
+  let datos;
+  try { datos = await api('/api/carga/trabajos'); } catch (err) { return; }
+  const filas = datos.trabajos.map((t) => {
+    const [nombre, clase] = ESTADOS[t.estado] || [t.estado, ''];
+    const acciones = [];
+    if (t.estado === 'revision') acciones.push(`<button class="prim" data-rev="${esc(t.id)}">Revisar</button>`);
+    if (t.estado === 'indexado' || t.estado === 'error') acciones.push(`<button class="sec" data-rev="${esc(t.id)}">Ver</button>`);
+    if (t.estado === 'error') acciones.push(`<button class="sec" data-reint="${esc(t.id)}">Reintentar</button>`);
+    if (['revision', 'error', 'en_cola'].includes(t.estado)) acciones.push(`<button class="peligro" data-desc="${esc(t.id)}">Descartar</button>`);
+    const rev = (t.errores ? `<span class="chip-error">${t.errores} error</span>` : '') +
+                (t.avisos ? `<span class="chip-aviso">${t.avisos} aviso${t.avisos > 1 ? 's' : ''}</span>` : '') +
+                (t.verificado === true ? '<span class="chip-ok">verificado</span>' : '') +
+                (t.verificado === false ? '<span class="chip-error">verificacion con problemas</span>' : '');
+    return `<tr><td><b>${esc(t.titulo || t.archivo || '(texto)')}</b><div class="suave">${esc(t.archivo || t.origen)} · ${esc(t.creado)}</div>
+      ${progresoHtml(t)}${t.error ? `<div class="msj error">${esc(t.error.mensaje)}</div>` : ''}</td>
+      <td class="estado"><span class="${clase}">${esc(nombre)}</span> ${grafoHtml(t.grafo)}</td>
+      <td class="estado">${rev}</td><td class="mono">${esc(t.doc_id || '')}</td>
+      <td><div class="acciones">${acciones.join('')}</div></td></tr>`;
+  });
+  $('#tablaTrab').innerHTML = filas.join('') || '<tr><td colspan="5" class="suave">Todavia no hay trabajos.</td></tr>';
+  const activos = datos.trabajos.filter((t) => ['en_cola', 'extrayendo', 'indexando'].includes(t.estado) ||
+                                               (t.grafo && ['pendiente', 'en_curso'].includes(t.grafo.estado))).length;
+  const nRev = datos.trabajos.filter((t) => t.estado === 'revision').length;
+  $('#nTrab').textContent = nRev ? '(' + nRev + ' por revisar)' : '';
+  programarSondeo(activos > 0);
+}
+function programarSondeo(activo) {
+  clearTimeout(sondeo);
+  sondeo = setTimeout(async () => { await cargarTrabajos(); if (activo) cargarEstado(); }, activo ? 2000 : 15000);
+}
+$('#tablaTrab').onclick = async (ev) => {
+  const b = ev.target.closest('button'); if (!b) return;
+  try {
+    if (b.dataset.rev) abrirTrabajo(b.dataset.rev);
+    if (b.dataset.reint) { await api(`/api/carga/trabajos/${b.dataset.reint}/reintentar`, {method: 'POST'}); cargarTrabajos(); }
+    if (b.dataset.desc && confirm('¿Descartar este trabajo?')) { await api(`/api/carga/trabajos/${b.dataset.desc}`, {method: 'DELETE'}); cargarTrabajos(); }
+  } catch (err) { toast(err.message, 'error', 8000); }
+};
+$('#refrescarTrab').onclick = cargarTrabajos;
+
+// ── revision de un trabajo ──
+function avisosHtml(rev) {
+  if (!rev) return '';
+  let h = '';
+  for (const e of rev.errores || []) h += `<div class="msj error"><b>Bloquea:</b> ${esc(e.mensaje)}</div>`;
+  for (const a of rev.avisos || []) h += `<div class="msj aviso">${esc(a.mensaje)}</div>`;
+  if (!h) h = '<div class="msj ok">La revision no encontro problemas.</div>';
+  return h;
+}
+function datosHtml(t) {
+  const r = t.revision || {}, s = r.estadisticas || {}, ex = t.extraccion || {}, id = r.identidad || {};
+  const metodo = {texto_pdf: 'capa de texto del PDF', ocr: 'OCR', texto: 'texto', json: 'JSON importado'}[ex.metodo] || ex.metodo || '-';
+  const esResolucion = /^resoluci[oó]n$/i.test(((t.borrador || {}).tipo_documento || '').trim());
+  const identidad = id.organo && id.numero ? esc(id.organo + ' ' + id.numero)
+    : (esResolucion ? '<span class="chip-aviso">sin identidad</span>' : '<span class="suave">no aplica</span>');
+  const ocr = ex.ocr ? `${esc(ex.ocr.modelo)} · ${esc(ex.ocr.segundos)} s` : '';
+  return `<div class="grid2">
+    <div class="dato"><b>Como se leyo</b>${esc(metodo)} ${ocr ? '<div class="suave">' + ocr + '</div>' : ''}</div>
+    <div class="dato"><b>Paginas</b>${esc(ex.paginas ?? '-')}</div>
+    <div class="dato"><b>Caracteres (utiles)</b>${esc(s.caracteres)} (${esc(s.caracteres_indexables)})</div>
+    <div class="dato"><b>Fragmentos a indexar</b>${esc(s.fragmentos)}</div>
+    <div class="dato"><b>Identidad desde el titulo</b>${identidad}</div>
+    <div class="dato"><b>Encabezado del texto</b>${r.encabezado ? esc((r.encabezado.organo || '?') + ' ' + r.encabezado.numero) : '-'}</div>
+  </div>`;
+}
+function resultadoHtml(t) {
+  const res = t.resultado; if (!res) return '';
+  const v = res.verificacion || {};
+  let h = `<div class="msj ${v.ok ? 'ok' : 'error'}"><b>${v.ok ? 'Indexado y verificado' : 'Indexado, pero la verificacion encontro problemas'}</b>
+    — ${esc(res.chunks)} fragmentos, ${esc(res.vectores)} vectores${res.persistido ? ', indice guardado en disco' : ''}.
+    ${v.puesto_autobusqueda ? `Buscandolo por su propio texto aparece ${v.puesto_autobusqueda}º.` : ''}</div>`;
+  for (const p of v.problemas || []) h += `<div class="msj error">${esc(p)}</div>`;
+  return h;
+}
+async function abrirTrabajo(tid) {
+  let t;
+  try { t = await api('/api/carga/trabajos/' + tid); } catch (err) { return toast(err.message, 'error'); }
+  const b = t.borrador || {};
+  const editable = t.estado === 'revision' || (t.estado === 'error' && b.contenido !== undefined);
+  const sugerido = (t.revision || {}).titulo_sugerido;
+  $('#dlgTitulo').textContent = (t.estado === 'revision' ? 'Revisar: ' : '') + (b.titulo || (t.archivo || {}).nombre || t.id);
+  let html = resultadoHtml(t) + (t.error ? `<div class="msj error">${esc(t.error.mensaje)}</div>` : '') +
+             avisosHtml(t.revision) + datosHtml(t);
+  if (b.contenido !== undefined) {
+    html += `<div class="grid2" style="margin-top:12px">
+      <div><label>Titulo</label><input id="eTitulo" type="text" value="${esc(b.titulo)}" ${editable ? '' : 'disabled'}>
+        ${sugerido && sugerido !== b.titulo && editable ? `<button class="sec" id="usarSug" style="margin-top:4px">Usar "${esc(sugerido)}"</button>` : ''}</div>
+      <div><label>Tipo de documento</label><input id="eTipo" type="text" list="tipos" value="${esc(b.tipo_documento)}" ${editable ? '' : 'disabled'}></div>
+      <div><label>Etiquetas</label><input id="eEtq" type="text" value="${esc((b.etiquetas || []).join(', '))}" ${editable ? '' : 'disabled'}></div>
+    </div>
+    <div style="margin-top:10px"><label>Texto que se va a indexar ${editable ? '(podes corregir el OCR aqui)' : ''}</label>
+      <textarea id="eCont" ${editable ? '' : 'readonly'}>${esc(b.contenido)}</textarea></div>`;
+    if (editable) html += `<div class="fila" style="margin-top:8px">
+      <label class="check"><input type="checkbox" id="eDup" ${t.opciones && t.opciones.permitir_duplicado ? 'checked' : ''}> Cargar aunque este duplicado</label>
+      <label class="check"><input type="checkbox" id="eLlm" ${t.opciones && t.opciones.enriquecer ? 'checked' : ''}> Pasar por el LLM</label></div>`;
+  }
+  $('#dlgCuerpo').innerHTML = html;
+  const pie = [];
+  if (t.extraccion && t.extraccion.markdown) pie.push(`<button class="sec" id="verMd">Ver Markdown del OCR</button>`);
+  if (editable) pie.push(`<button class="prim" id="confirmar">Confirmar e indexar</button>`);
+  $('#dlgPie').innerHTML = pie.join('');
+  if ($('#usarSug')) $('#usarSug').onclick = () => { $('#eTitulo').value = sugerido; };
+  if ($('#verMd')) $('#verMd').onclick = async () => {
+    try {
+      const md = await api(`/api/carga/trabajos/${tid}/ocr`);
+      const w = window.open('', '_blank'); w.document.write('<pre style="white-space:pre-wrap;font:13px monospace">' + esc(md) + '</pre>');
+    } catch (err) { toast(err.message, 'error'); }
+  };
+  if ($('#confirmar')) $('#confirmar').onclick = async () => {
+    $('#confirmar').disabled = true;
+    try {
+      await api(`/api/carga/trabajos/${tid}/confirmar`, {method: 'POST', json: {
+        titulo: $('#eTitulo').value, tipo_documento: $('#eTipo').value, etiquetas: $('#eEtq').value,
+        contenido: $('#eCont').value, permitir_duplicado: $('#eDup').checked, enriquecer: $('#eLlm').checked}});
+      $('#dlg').close(); toast('Indexando...', 'ok'); cargarTrabajos();
+    } catch (err) {
+      $('#confirmar').disabled = false;
+      if (err.status === 422 && err.datos && err.datos.revision) {
+        t.revision = err.datos.revision; toast('La revision encontro errores: corregilos y volve a confirmar.', 'error', 7000);
+        $('#dlgCuerpo').querySelectorAll('.msj').forEach((m) => m.remove());
+        $('#dlgCuerpo').insertAdjacentHTML('afterbegin', avisosHtml(err.datos.revision));
+      } else toast(err.message, 'error', 8000);
+    }
+  };
+  $('#dlg').showModal();
+}
+$('#dlgCerrar').onclick = () => $('#dlg').close();
+
+// ── documentos ──
+async function cargarDocs() {
+  let datos;
+  try { datos = await api('/api/carga/documentos'); } catch (err) { return; }
+  $('#tablaDocs').innerHTML = datos.documentos.map((d) => `<tr>
+    <td class="mono">${esc(d.doc_id)}</td>
+    <td><b>${esc(d.titulo)}</b><div class="suave">${esc(d.archivo || '')} ${d.paginas ? '· ' + esc(d.paginas) + ' pag.' : ''} · ${esc(d.caracteres)} car.</div></td>
+    <td>${esc(d.tipo_documento)}</td>
+    <td class="suave">${esc(d.metodo || d.origen || '')}<div>${esc(d.editado || d.cargado || '')}</div></td>
+    <td class="estado">${d.grafo === 'al_dia' ? `<span class="chip-ok" title="${esc(d.tema || '')}">si</span>`
+      : d.grafo === 'desactualizado' ? '<span class="chip-aviso" title="Se edito despues de pasarlo por el LLM">desactualizado</span>'
+      : '<span class="chip-aviso">pendiente</span>'}</td>
+    <td><div class="acciones">
+      <button class="sec" data-ver="${esc(d.doc_id)}">Ver / editar</button>
+      <button class="sec" data-verif="${esc(d.doc_id)}">Verificar</button>
+      <button class="sec" data-raw="${esc(d.doc_id)}">JSON</button>
+      <button class="peligro" data-del="${esc(d.doc_id)}">Eliminar</button></div></td></tr>`).join('')
+    || '<tr><td colspan="6" class="suave">Todavia no se cargo ningun documento.</td></tr>';
+}
+async function descargar(ruta, nombre) {
+  const r = await fetch(ruta, {headers: {'X-Admin-Token': token}});
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  const url = URL.createObjectURL(await r.blob());
+  const a = document.createElement('a'); a.href = url; a.download = nombre; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+async function abrirDocumento(docId) {
+  let d;
+  try { d = await api('/api/carga/documentos/' + docId); } catch (err) { return toast(err.message, 'error'); }
+  const raw = d.raw || {}, ix = d.indice || {}, g = d.grafo;
+  $('#dlgTitulo').textContent = docId + ' · ' + (raw.titulo || '');
+  $('#dlgCuerpo').innerHTML = `<div class="grid2">
+      <div class="dato"><b>En el indice</b>${esc(ix.chunks)} fragmentos · ${esc(ix.vectores_vivos)} vectores</div>
+      <div class="dato"><b>Grafo</b>${g ? esc(g.tema || '(sin tema)') + ' · ' + esc((g.personas || []).length) + ' personas · ' + esc((g.citas || g.cita || []).length) + ' citas' : 'pendiente'}</div>
+      <div class="dato"><b>Cargado</b>${esc((raw.carga || {}).cargado)} ${raw.carga && raw.carga.editado ? '<div class="suave">editado ' + esc(raw.carga.editado) + '</div>' : ''}</div>
+      <div class="dato"><b>Origen</b>${esc((raw.carga || {}).archivo || (raw.carga || {}).origen || '')}</div></div>
+    <div class="grid2" style="margin-top:12px">
+      <div><label>Titulo</label><input id="eTitulo" type="text" value="${esc(raw.titulo)}"></div>
+      <div><label>Tipo de documento</label><input id="eTipo" type="text" list="tipos" value="${esc(raw.tipo_documento)}"></div>
+      <div><label>Etiquetas</label><input id="eEtq" type="text" value="${esc((raw.etiquetas || []).join(', '))}"></div></div>
+    <div style="margin-top:10px"><label>Texto indexado</label><textarea id="eCont">${esc(raw.contenido)}</textarea></div>
+    <label class="check" style="margin-top:8px"><input type="checkbox" id="eLlm" checked> Volver a pasar por el LLM</label>`;
+  $('#dlgPie').innerHTML = (d.original ? '<button class="sec" id="bajarOrig">Descargar original</button>' : '') +
+                           '<button class="prim" id="guardarDoc">Guardar y reindexar</button>';
+  if ($('#bajarOrig')) $('#bajarOrig').onclick = () => descargar(`/api/carga/documentos/${docId}/original`, (raw.carga || {}).archivo || docId).catch((e) => toast(e.message, 'error'));
+  $('#guardarDoc').onclick = async () => {
+    try {
+      await api('/api/carga/documentos/' + docId, {method: 'PUT', json: {
+        titulo: $('#eTitulo').value, tipo_documento: $('#eTipo').value, etiquetas: $('#eEtq').value,
+        contenido: $('#eCont').value, enriquecer: $('#eLlm').checked}});
+      $('#dlg').close(); toast('Reindexando ' + docId + '...', 'ok'); cargarTrabajos();
+    } catch (err) {
+      if (err.status === 422 && err.datos && err.datos.revision) $('#dlgCuerpo').insertAdjacentHTML('afterbegin', avisosHtml(err.datos.revision));
+      toast(err.message, 'error', 8000);
+    }
+  };
+  $('#dlg').showModal();
+}
+$('#tablaDocs').onclick = async (ev) => {
+  const b = ev.target.closest('button'); if (!b) return;
+  try {
+    if (b.dataset.ver) abrirDocumento(b.dataset.ver);
+    if (b.dataset.raw) await descargar(`/api/carga/documentos/${b.dataset.raw}/raw`, b.dataset.raw + '.json');
+    if (b.dataset.verif) {
+      const v = await api(`/api/carga/documentos/${b.dataset.verif}/verificar`, {method: 'POST'});
+      toast(v.ok ? `${b.dataset.verif}: ${v.chunks} fragmentos, ${v.vectores_vivos} vectores, aparece ${v.puesto_autobusqueda}º buscandolo por su texto.`
+                 : `${b.dataset.verif}: ${v.problemas.join('; ')}`, v.ok ? 'ok' : 'error', 9000);
+    }
+    if (b.dataset.del && confirm(`¿Eliminar ${b.dataset.del} de la base? Se borra el texto, sus vectores, su entrada en el grafo y el archivo original.`)) {
+      await api('/api/carga/documentos/' + b.dataset.del, {method: 'DELETE'});
+      toast(b.dataset.del + ' eliminado.', 'ok'); cargarDocs(); cargarEstado();
+    }
+  } catch (err) { toast(err.message, 'error', 8000); }
+};
+$('#refrescarDocs').onclick = cargarDocs;
+$('#grafoPend').onclick = async () => {
+  try {
+    const r = await api('/api/carga/grafo', {method: 'POST'});
+    toast(r.encolados.length ? r.encolados.length + ' documento(s) en cola para el LLM.' : 'No hay documentos pendientes de grafo.', 'ok');
+    cargarTrabajos();
+  } catch (err) { toast(err.message, 'error'); }
+};
+
+async function refrescarTodo() {
+  const e = await cargarEstado();
+  if (e) { cargarTrabajos(); if (pestana === 'docs') cargarDocs(); }
+}
+refrescarTodo();
+</script>
+</body>
+</html>

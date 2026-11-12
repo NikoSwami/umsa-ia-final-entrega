@@ -1,0 +1,41 @@
+# Dependencias REALES de Gaceta IA (curadas: lo que el codigo importa).
+# El freeze completo del venv historico quedo en requirements-freeze-2026-07.txt.
+#
+# llama-cpp-python NO va aqui porque su instalacion depende de la plataforma:
+#   - Windows + CUDA :  pip install -r requirements-windows.txt
+#   - Colab / Linux  :  los notebooks de colab/ instalan su propia build
+#     (pip install llama-cpp-python) o compilan con CMAKE_ARGS="-DGGML_CUDA=on"
+#
+# Tests (CI): solo hace falta  pip install pytest fastapi httpx
+# (la suite no carga el modelo; ver .github/workflows/tests.yml)
+
+# --- API web ---
+fastapi==0.136.1
+uvicorn==0.44.0
+# subida de archivos en la carga manual (/carga, api_carga.py)
+python-multipart==0.0.28
+
+# --- carga manual: capa de texto de los PDF digitales ---
+# El OCR de los escaneados (PaddleOCR-VL) NO va aqui: vive en su propio
+# entorno, servicio_ocr/ (ver su README), porque Paddle trae su numpy.
+pypdf==6.21.1
+
+# --- RAG: busqueda vectorial + embeddings + reranker ---
+faiss-cpu==1.13.2
+sentence-transformers==5.3.0
+torch==2.10.0
+numpy==2.4.2
+huggingface_hub==1.6.0
+
+# --- configuracion ---
+# Opcional: si no esta, api_gaceta ignora el .env y todo sigue funcionando con
+# las variables exportadas a mano (iniciar_web_react.bat). En el servidor es lo
+# que permite configurar la Gaceta con un .env, como MOF.
+python-dotenv==1.2.2
+
+# --- tests ---
+pytest>=8
+# httpx: lo usan los tests de la API y tambien motor_api.py (backend LLM por
+# API gratis, GACETA_BACKEND=api). No hace falta el SDK de OpenAI ni el de
+# Google: esos proveedores hablan el mismo dialecto HTTP.
+httpx==0.28.1

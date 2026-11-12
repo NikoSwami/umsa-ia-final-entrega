@@ -1,0 +1,26 @@
+# OCR con GPU NVIDIA (Docker Desktop con WSL2 + driver NVIDIA en Windows),
+# con el motor VL (PaddleOCR-VL-1.5), que es el que aprovecha la GPU.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d --build
+#
+# PaddleOCR-VL necesita ~2,5 GB de VRAM en el pico: entra en la RTX 3060 de
+# 6 GB. El motor liviano (por defecto, sin este archivo) no necesita GPU.
+# Si "docker run --gpus all nvidia/cuda:12.6.0-base-ubuntu22.04 nvidia-smi"
+# no muestra la placa, este archivo no va a funcionar: usa solo el compose base.
+services:
+  ocr:
+    build:
+      args:
+        MOTOR: vl
+        PADDLE: gpu
+    image: gaceta-ocr:gpu
+    environment:
+      OCR_MOTOR: vl
+      OCR_DISPOSITIVO: gpu
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]

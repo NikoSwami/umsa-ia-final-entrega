@@ -1,0 +1,51 @@
+# Lo que NO entra a las imagenes de Docker (docker compose build).
+
+# Secretos: la configuracion llega por env_file en docker-compose.yml, nunca
+# horneada en la imagen.
+.env
+.env.*
+!.env.example
+
+# Entornos y dependencias (la imagen instala las suyas)
+venv/
+**/.venv/
+node/
+**/node_modules/
+**/__pycache__/
+*.pyc
+.pytest_cache/
+
+# Modelos: se montan desde la carpeta del proyecto (modelos_mejoras/) o se
+# bajan una vez a un volumen. Qwen no hace falta: el contenedor usa la API.
+qwen2.5-7b-instruct-q4/
+modelos_mejoras/
+
+# Git, la sesion de Claude y lo que no es parte de la app
+.git/
+.github/
+.claude/
+graphify/
+presentacion/
+resultados/
+colab/
+frontend/src/
+frontend/public/
+*.pptx
+*.pdf
+api.log
+cloudflared.log
+
+# Archivos temporales de la base. La base (raw, chunks, FAISS, grafos) SI
+# entra: es con lo que se llena el volumen de datos la primera vez.
+gaceta_rag/data/*.sqlite-shm
+gaceta_rag/data/*.sqlite-wal
+gaceta_rag/data/*.log
+gaceta_rag/data/*.bak
+gaceta_rag/data/*.tmp
+gaceta_rag/data/gaceta.db
+gaceta_rag/data/cargas/
+gaceta_rag/data/cargas_mof/
+
+# Archivos que esperan subir por el MCP (docker-compose.paperless.yml).
+entrada/
+gaceta_rag/data/paperless/

@@ -1,0 +1,77 @@
+# Servicio OCR detras de FastAPI (servicio_ocr/app.py). Dos motores:
+#
+#   liviano (por defecto)  PP-OCRv5 latino + PP-DocLayoutV3 + SLANet+ en ONNX:
+#                          ~15 s y <1 GB por pagina en CPU. Imagen chica.
+#   vl                     PaddleOCR-VL-1.5 (orc-con-ia-desde-google-colab):
+#                          ~5 min y ~8 GB por pagina en CPU; para la GPU.
+#
+#   docker compose up -d --build                     (liviano)
+#   docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d --build   (vl en GPU)
+FROM python:3.12-slim
+
+ARG MOTOR=liviano
+ARG PADDLE=cpu
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONIOENCODING=utf-8 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    HF_HOME=/home/ocr/.cache/huggingface \
+    PADDLE_PDX_CACHE_HOME=/home/ocr/.paddlex \
+    PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK=True \
+    OCR_MOTOR=${MOTOR} \
+    OCR_VERSION=v1.5 \
+    OCR_DISPOSITIVO=cpu
+
+# libgomp: onnxruntime y paddle; libgl/glib: el opencv de PaddleX (vl).
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends libgomp1 libglib2.0-0 \
+ && if [ "$MOTOR" = "vl" ]; then apt-get install -y --no-install-recommends libgl1; fi \
+ && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+COPY servicio_ocr/requirements.txt servicio_ocr/requirements-sin-deps.txt \
+     servicio_ocr/requirements-vl.txt /tmp/
+
+# Paddle GPU no esta en PyPI: sale del indice de Baidu, que desde fuera de
+# China corta descargas largas. Timeouts largos y reintentos.
+RUN set -eux; \
+    if [ "$MOTOR" = "vl" ]; then \
+      if [ "$PADDLE" = "gpu" ]; then \
+        pip install --timeout 180 --retries 10 paddlepaddle-gpu==3.2.1 \
+          -i https://www.paddlepaddle.org.cn/packages/stable/cu126/; \
+        grep -v '^paddlepaddle==' /tmp/requirements-vl.txt > /tmp/req.txt; \
+      else \
+        cp /tmp/requirements-vl.txt /tmp/req.txt; \
+      fi; \
+      pip install --timeout 180 --retries 10 -r /tmp/req.txt; \
+    else \
+      pip install --timeout 180 --retries 10 -r /tmp/requirements.txt; \
+      pip install --no-deps -r /tmp/requirements-sin-deps.txt; \
+    fi
+
+# Solo lo que el servicio usa: los motores OCR y la conversion a Markdown.
+COPY gaceta_rag/carga/__init__.py gaceta_rag/carga/ocr.py \
+     gaceta_rag/carga/ocr_liviano.py gaceta_rag/carga/a_markdown.py \
+     /app/gaceta_rag/carga/
+COPY servicio_ocr/__init__.py servicio_ocr/app.py /app/servicio_ocr/
+
+# Motor liviano: sus modelos (~145 MB) se bajan AHORA, dentro de la imagen.
+# RapidOCR los guarda en la carpeta del paquete, que el usuario sin
+# privilegios no puede escribir: si se bajaran al arrancar, fallaria.
+RUN if [ "$MOTOR" = "liviano" ]; then \
+      python -c "from gaceta_rag.carga.ocr_liviano import MotorOCRLiviano; MotorOCRLiviano().cargar(); print('modelos del OCR liviano listos')"; \
+    fi
+
+RUN useradd --create-home --uid 1000 ocr \
+ && mkdir -p /home/ocr/.cache/huggingface /home/ocr/.paddlex \
+ && chown -R ocr:ocr /home/ocr
+
+USER ocr
+EXPOSE 8001
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+  CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/salud', timeout=4)"
+
+CMD ["python", "-m", "uvicorn", "servicio_ocr.app:app", "--host", "0.0.0.0", "--port", "8001"]

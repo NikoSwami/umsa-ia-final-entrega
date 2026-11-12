@@ -1,0 +1,6 @@
+# Instalacion en Windows con GPU NVIDIA (CUDA 12.4):
+#   pip install -r requirements-windows.txt
+# Usa el wheel precompilado de llama-cpp-python para cp312/win_amd64
+# (el mismo que corre en el equipo de desarrollo).
+-r requirements.txt
+llama_cpp_python @ https://github.com/abetlen/llama-cpp-python/releases/download/v0.3.4-cu124/llama_cpp_python-0.3.4-cp312-cp312-win_amd64.whl#sha256=f07bef42e7b1ebeaa7f54ad9550225d167fbdf81fe670345293c393c7172eb7c

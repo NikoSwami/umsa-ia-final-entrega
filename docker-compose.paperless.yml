@@ -1,0 +1,76 @@
+# Puerta de entrada de documentos por MCP: Paperless-ngx + paperless-mcp.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.paperless.yml up -d
+#
+# Archivo aparte, como docker-compose.gpu.yml: la clave de Paperless es
+# obligatoria y, en el compose base, frenaria el arranque de quien no lo usa.
+#
+# Antes de levantarlo, en el .env: PAPERLESS_SECRET_KEY y PAPERLESS_ADMIN_PASSWORD.
+# Despues, una vez: python docker/preparar_paperless.py (crea los usuarios y sus
+# tokens) y volver a levantar. Ver PLAN_PAPERLESS_MCP.md.
+services:
+  gaceta:
+    environment:
+      # Dentro del compose, Paperless se llama asi. El token de lectura y el del
+      # webhook ya llegan desde el .env.
+      GACETA_PAPERLESS_URL: http://paperless:8000
+
+  broker:
+    image: valkey/valkey:9-alpine
+    # Sin puerto publicado: solo lo usa Paperless por la red interna.
+    volumes:
+      - paperless_broker:/data
+    restart: unless-stopped
+
+  paperless:
+    image: ghcr.io/paperless-ngx/paperless-ngx:3.4.1
+    # Guarda en SQLite: con los 10 s por defecto, a veces lo cerraban a la fuerza.
+    stop_grace_period: 30s
+    # Solo esta maquina. El 8000 de la PC es de la Gaceta.
+    ports:
+      - "127.0.0.1:${PAPERLESS_PUERTO:-8002}:8000"
+    environment:
+      PAPERLESS_SECRET_KEY: ${PAPERLESS_SECRET_KEY:?Defini PAPERLESS_SECRET_KEY en el .env}
+      PAPERLESS_ADMIN_USER: ${PAPERLESS_ADMIN_USER:-admin}
+      PAPERLESS_ADMIN_PASSWORD: ${PAPERLESS_ADMIN_PASSWORD:?Defini PAPERLESS_ADMIN_PASSWORD en el .env}
+      PAPERLESS_REDIS: redis://broker:6379
+      PAPERLESS_DBENGINE: sqlite
+      # Por defecto seria ingles y UTC.
+      PAPERLESS_OCR_LANGUAGE: spa
+      PAPERLESS_TIME_ZONE: America/La_Paz
+      PAPERLESS_URL: http://127.0.0.1:${PAPERLESS_PUERTO:-8002}
+    volumes:
+      # Volumenes y no carpetas de Windows: es SQLite, igual que gaceta_datos.
+      - paperless_datos:/usr/src/paperless/data
+      - paperless_media:/usr/src/paperless/media
+      - paperless_consumo:/usr/src/paperless/consume
+      - paperless_export:/usr/src/paperless/export
+    depends_on:
+      - broker
+    restart: unless-stopped
+
+  paperless-mcp:
+    image: ghcr.io/baruchiro/paperless-mcp:2.2.1
+    # Solo esta maquina. El 3000 de la PC es de MOF. Sin --no-auth: cada pedido
+    # trae su Bearer, y es el token de Paperless el que decide que puede hacer.
+    ports:
+      - "127.0.0.1:${PAPERLESS_MCP_PUERTO:-3100}:3000"
+    environment:
+      PAPERLESS_URL: http://paperless:8000
+      PAPERLESS_API_KEY: ${PAPERLESS_MCP_API_KEY:-}
+      # Sin esto, file_path podria subir cualquier archivo del contenedor.
+      PAPERLESS_MCP_UPLOAD_PATHS: /entrada
+    volumes:
+      # Un PDF en base64 no entra en el contexto de un modelo: el cliente deja
+      # el archivo aqui y pasa su ruta.
+      - ${PAPERLESS_ENTRADA:-./entrada}:/entrada:ro
+    depends_on:
+      - paperless
+    restart: unless-stopped
+
+volumes:
+  paperless_broker:
+  paperless_datos:
+  paperless_media:
+  paperless_consumo:
+  paperless_export:

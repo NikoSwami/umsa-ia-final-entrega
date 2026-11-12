@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Respaldo de MOF · Gaceta IA</title>
+<style>
+:root {
+  --azul: #0B2D5C; --rojo: #A32035;
+  --fondo: #f4f6fa; --panel: #ffffff; --texto: #1b2433; --suave: #5b6779;
+  --borde: #d9dee7; --ok: #1d7a46; --aviso: #9a6400; --error: #b42318;
+  --ok-bg: #e7f5ec; --aviso-bg: #fff4dc; --error-bg: #fdecea; --info-bg: #e8eef8;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fondo: #0f1522; --panel: #182133; --texto: #e6ebf3; --suave: #9aa6b8;
+    --borde: #2b3850; --ok: #5fd38f; --aviso: #f0b64b; --error: #ff8a80;
+    --ok-bg: #173325; --aviso-bg: #3a2e14; --error-bg: #3d1a1a; --info-bg: #1d2a42;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+       background: var(--fondo); color: var(--texto); }
+header { background: var(--azul); color: #fff; padding: 12px 20px; display: flex;
+         align-items: center; gap: 16px; flex-wrap: wrap; border-bottom: 4px solid var(--rojo); }
+header h1 { font-size: 18px; margin: 0; flex: 1; }
+header a { color: #fff; opacity: .85; }
+main { max-width: 1180px; margin: 0 auto; padding: 16px; }
+.panel { background: var(--panel); border: 1px solid var(--borde); border-radius: 10px;
+         padding: 16px; margin-bottom: 16px; }
+.panel h2 { font-size: 16px; margin: 0 0 10px; }
+.fila { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+.estado span, .chip { display: inline-block; padding: 3px 10px; border-radius: 99px; font-size: 13px;
+               background: var(--info-bg); margin: 2px 4px 2px 0; }
+.chip-ok { background: var(--ok-bg) !important; color: var(--ok); }
+.chip-aviso { background: var(--aviso-bg) !important; color: var(--aviso); }
+.chip-error { background: var(--error-bg) !important; color: var(--error); }
+label { font-size: 13px; color: var(--suave); display: block; margin-bottom: 3px; }
+input[type=password] { width: 100%; padding: 8px 10px; border: 1px solid var(--borde);
+  border-radius: 7px; background: var(--fondo); color: var(--texto); font: inherit; }
+.campo { flex: 1 1 260px; }
+.check { display: flex; gap: 6px; align-items: center; font-size: 14px; color: var(--texto); }
+button.prim, button.sec, button.peligro { border: 0; border-radius: 8px; padding: 9px 16px;
+  cursor: pointer; font: inherit; font-weight: 600; }
+button.prim { background: var(--azul); color: #fff; }
+button.sec { background: var(--info-bg); color: var(--texto); }
+button.peligro { background: var(--error-bg); color: var(--error); }
+button:disabled { opacity: .5; cursor: default; }
+#zona { border: 2px dashed var(--borde); border-radius: 10px; padding: 28px; text-align: center;
+        color: var(--suave); cursor: pointer; }
+#zona.encima { border-color: var(--azul); background: var(--info-bg); }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { text-align: left; padding: 7px 6px; border-bottom: 1px solid var(--borde); vertical-align: top; }
+th { color: var(--suave); font-weight: 600; font-size: 12px; text-transform: uppercase; }
+.msj { padding: 10px 12px; border-radius: 8px; margin: 8px 0; }
+.msj.ok { background: var(--ok-bg); color: var(--ok); }
+.msj.aviso { background: var(--aviso-bg); color: var(--aviso); }
+.msj.error { background: var(--error-bg); color: var(--error); }
+.cifras { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin: 8px 0 14px; }
+.cifra { border: 1px solid var(--borde); border-radius: 8px; padding: 8px 10px; }
+.cifra b { display: block; font-size: 22px; }
+.cifra small { color: var(--suave); }
+.cifra.menos b { color: var(--error); }
+.cifra.mas b { color: var(--ok); }
+ol.pasos { padding-left: 20px; margin: 6px 0; }
+ol.pasos li { margin: 3px 0; }
+details { margin: 8px 0; }
+summary { cursor: pointer; font-weight: 600; }
+.tabla { overflow-x: auto; }
+.suave { color: var(--suave); font-size: 13px; }
+del { color: var(--error); } ins { color: var(--ok); text-decoration: none; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Cargar el respaldo de MOF</h1>
+  <a href="/carga">Carga de documentos</a>
+  <a href="/">Chat</a>
+</header>
+<main>
+  <section class="panel">
+    <div class="fila">
+      <div class="campo">
+        <label for="token">Token (GACETA_CARGA_TOKEN o GACETA_ADMIN_TOKEN)</label>
+        <input id="token" type="password" autocomplete="off" placeholder="pega el token aqui">
+      </div>
+      <button class="sec" id="guardarToken">Usar</button>
+    </div>
+    <div id="tokenMsj"></div>
+    <div class="estado" id="estado"></div>
+  </section>
+
+  <section class="panel">
+    <h2>1. Subir el respaldo</h2>
+    <p class="suave">El <code>pg_dump</code> de MOF en texto plano (<code>.sql</code>, sin <code>-Fc</code>).
+      Primero se compara con lo que hay; despues se importa a la replica y al indice del chat y se verifica.
+      El archivo se borra al terminar: trae datos personales.</p>
+    <div id="zona">Arrastra el <b>.sql</b> aqui o hace clic para elegirlo</div>
+    <input id="archivo" type="file" accept=".sql,text/plain" hidden>
+    <div class="fila" style="margin-top:10px">
+      <label class="check"><input type="checkbox" id="simular"> Solo comparar (no tocar nada)</label>
+      <label class="check"><input type="checkbox" id="permitir"> No detenerse por eliminaciones grandes</label>
+      <button class="prim" id="subir" disabled>Cargar</button>
+    </div>
+    <div id="subidaMsj"></div>
+  </section>
+
+  <section class="panel" id="detalle" hidden></section>
+
+  <section class="panel">
+    <h2>Cargas anteriores</h2>
+    <div class="tabla"><table>
+      <thead><tr><th>Cuando</th><th>Archivo</th><th>Estado</th><th>Datos al</th><th>Cambios</th><th></th></tr></thead>
+      <tbody id="lista"></tbody>
+    </table></div>
+  </section>
+</main>
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let token = '';
+try { token = sessionStorage.getItem('gacetaCargaToken') || ''; } catch (e) {}
+let elegido = null, mirando = null, temporizador = null;
+
+async function api(ruta, o = {}) {
+  o.headers = Object.assign({'X-Admin-Token': token}, o.headers || {});
+  const r = await fetch(ruta, o);
+  let cuerpo = null;
+  try { cuerpo = await r.json(); } catch (e) {}
+  if (!r.ok) throw new Error((cuerpo && cuerpo.detail) || `HTTP ${r.status}`);
+  return cuerpo;
+}
+
+const CLASE = {listo: 'chip-ok', simulado: 'chip-ok', fallido: 'chip-error', interrumpido: 'chip-error',
+               esperando_confirmacion: 'chip-aviso', descartado: ''};
+const chip = e => `<span class="chip ${CLASE[e] ?? 'chip-aviso'}">${esc(e.replaceAll('_', ' '))}</span>`;
+
+// ── token ──
+$('#token').value = token;
+$('#guardarToken').onclick = () => {
+  token = $('#token').value.trim();
+  try { sessionStorage.setItem('gacetaCargaToken', token); } catch (e) {}
+  refrescar();
+};
+
+async function refrescar() {
+  if (!token) { $('#tokenMsj').innerHTML = '<div class="msj aviso">Falta el token.</div>'; return; }
+  try {
+    const e = await api('/api/mof/respaldo/estado');
+    $('#tokenMsj').innerHTML = '';
+    const rep = e.replica || {};
+    $('#estado').innerHTML =
+      `<span class="${e.motor_listo ? 'chip-ok' : 'chip-aviso'}">motor ${e.motor_listo ? 'listo' : 'cargando'}</span>` +
+      (rep.ok ? `<span>replica: ${rep.unidades} unidades, ${rep.funciones} funciones, ${rep.cargos} cargos</span>`
+              : `<span class="chip-error">replica: ${esc(rep.error || 'no disponible')}</span>`) +
+      (e.ultimo_listo ? `<span>ultimo cargado: ${esc(e.ultimo_listo.archivo)} (datos al ${esc(e.ultimo_listo.fecha_datos)})</span>` : '');
+    const {trabajos} = await api('/api/mof/respaldo/trabajos');
+    $('#lista').innerHTML = trabajos.map(t => {
+      const r = t.resumen;
+      const cambios = r ? `+${r.unidades_nuevas} / <del>-${r.unidades_eliminadas}</del> / ~${r.unidades_modificadas}` : '';
+      return `<tr><td>${esc(t.creado)}</td><td>${esc(t.archivo)}</td><td>${chip(t.estado)}</td>
+        <td>${esc(t.fecha_datos)}</td><td>${cambios}</td>
+        <td><button class="sec" data-ver="${esc(t.id)}">Ver</button></td></tr>`;
+    }).join('') || '<tr><td colspan="6" class="suave">Todavia no se cargo ningun respaldo.</td></tr>';
+    document.querySelectorAll('[data-ver]').forEach(b => b.onclick = () => ver(b.dataset.ver));
+  } catch (err) {
+    $('#tokenMsj').innerHTML = `<div class="msj error">${esc(err.message)}</div>`;
+  }
+}
+
+// ── subir ──
+const zona = $('#zona');
+zona.onclick = () => $('#archivo').click();
+zona.ondragover = e => { e.preventDefault(); zona.classList.add('encima'); };
+zona.ondragleave = () => zona.classList.remove('encima');
+zona.ondrop = e => { e.preventDefault(); zona.classList.remove('encima'); elegir(e.dataTransfer.files[0]); };
+$('#archivo').onchange = e => elegir(e.target.files[0]);
+function elegir(f) {
+  elegido = f || null;
+  zona.innerHTML = f ? `<b>${esc(f.name)}</b> (${(f.size / 1048576).toFixed(1)} MB)` : 'Arrastra el <b>.sql</b> aqui';
+  $('#subir').disabled = !f;
+}
+$('#subir').onclick = async () => {
+  if (!elegido) return;
+  const fd = new FormData();
+  fd.append('archivo', elegido);
+  fd.append('simular', $('#simular').checked);
+  fd.append('permitir_bajas', $('#permitir').checked);
+  $('#subir').disabled = true;
+  $('#subidaMsj').innerHTML = '<div class="msj aviso">Subiendo...</div>';
+  try {
+    const t = await api('/api/mof/respaldo', {method: 'POST', body: fd});
+    $('#subidaMsj').innerHTML = '';
+    ver(t.id);
+  } catch (err) {
+    $('#subidaMsj').innerHTML = `<div class="msj error">${esc(err.message)}</div>`;
+  } finally { $('#subir').disabled = false; }
+};
+
+// ── un trabajo ──
+async function ver(id) {
+  mirando = id;
+  clearTimeout(temporizador);
+  let t;
+  try { t = await api(`/api/mof/respaldo/trabajos/${encodeURIComponent(id)}`); }
+  catch (err) { $('#detalle').hidden = false; $('#detalle').innerHTML = `<div class="msj error">${esc(err.message)}</div>`; return; }
+  pintar(t);
+  if (['recibido', 'procesando', 'importando'].includes(t.estado)) {
+    temporizador = setTimeout(() => mirando === id && ver(id), 1500);
+  } else { refrescar(); }
+}
+
+function lista(titulo, filas, columnas, abierto) {
+  if (!filas || !filas.length) return '';
+  return `<details ${abierto ? 'open' : ''}><summary>${esc(titulo)} (${filas.length})</summary><div class="tabla"><table>
+    <thead><tr>${columnas.map(c => `<th>${esc(c[0])}</th>`).join('')}</tr></thead>
+    <tbody>${filas.slice(0, 500).map(f => `<tr>${columnas.map(c => `<td>${c[1](f)}</td>`).join('')}</tr>`).join('')}</tbody>
+  </table></div>${filas.length > 500 ? '<p class="suave">Se muestran 500; el resto en el JSON del trabajo.</p>' : ''}</details>`;
+}
+
+function pintar(t) {
+  const d = $('#detalle');
+  d.hidden = false;
+  const inf = t.informe || {}, cmp = inf.comparacion, r = cmp && cmp.resumen;
+  const unidad = f => `${esc(f.nombre)} <span class="suave">${esc(f.sigla || '')} #${esc(f.id)}</span>`;
+  let h = `<h2>${esc(t.archivo)} ${chip(t.estado)}</h2>`;
+  if (t.progreso && t.progreso.total) h += `<p>Importando ${t.progreso.hechas}/${t.progreso.total} unidades...</p>`;
+  else if (t.progreso && t.progreso.esperando) h += `<p>Esperando que el motor termine de cargar el indice...</p>`;
+  if (t.error) h += `<div class="msj error">${esc(t.error)}</div>`;
+  (t.aviso || []).forEach(a => h += `<div class="msj aviso">${esc(a)}</div>`);
+  h += '<ol class="pasos">' + t.eventos.map(e =>
+    `<li><b>${esc(e.paso.replaceAll('_', ' '))}</b> ${chip(e.estado)} <span class="suave">${esc(e.fin)}</span><br>${esc(e.detalle || '')}</li>`).join('') + '</ol>';
+
+  if (t.estado === 'esperando_confirmacion') {
+    h += `<div class="msj aviso"><b>Detenido antes de tocar nada:</b> ${esc((inf.motivos_confirmacion || []).join('; '))}.
+      Revisa abajo lo que se eliminaria.</div>
+      <div class="fila"><button class="prim" id="confirmar">Confirmar e importar</button>
+      <button class="peligro" id="descartar">Descartar</button></div>`;
+  }
+  if (r) {
+    const c = (n, txt, cls) => `<div class="cifra ${cls}"><b>${n}</b><small>${txt}</small></div>`;
+    h += '<h2 style="margin-top:14px">Que cambia</h2><div class="cifras">' +
+      c(r.unidades_eliminadas, 'unidades eliminadas', r.unidades_eliminadas ? 'menos' : '') +
+      c(r.funciones_eliminadas, 'funciones eliminadas', r.funciones_eliminadas ? 'menos' : '') +
+      c(r.cargos_eliminados, 'cargos eliminados', r.cargos_eliminados ? 'menos' : '') +
+      c(r.unidades_nuevas, 'unidades nuevas', r.unidades_nuevas ? 'mas' : '') +
+      c(r.funciones_agregadas, 'funciones agregadas', r.funciones_agregadas ? 'mas' : '') +
+      c(r.unidades_modificadas, 'unidades modificadas', '') + '</div>';
+    h += `<p class="suave">Antes: ${cmp.antes.unidades} unidades, ${cmp.antes.funciones} funciones, ${cmp.antes.cargos} cargos.
+      Despues: ${cmp.despues.unidades} unidades, ${cmp.despues.funciones} funciones, ${cmp.despues.cargos} cargos.</p>`;
+    if (!cmp.hay_eliminaciones) h += '<div class="msj ok">No se elimina nada.</div>';
+    h += lista('Unidades eliminadas', cmp.unidades_eliminadas,
+      [['Unidad', unidad], ['Dependia de', f => esc(f.padre)], ['Funciones', f => f.funciones], ['Cargos', f => f.cargos]], true);
+    h += lista('Funciones eliminadas', cmp.funciones_eliminadas, [['Unidad', unidad], ['Funcion', f => `<del>${esc(f.funcion)}</del>`]], true);
+    h += lista('Cargos eliminados', cmp.cargos_eliminados, [['Unidad', unidad], ['Cargo', f => `<del>${esc(f.cargo)}</del>`]], true);
+    h += lista('Unidades nuevas', cmp.unidades_nuevas, [['Unidad', unidad], ['Codigo', f => esc(f.codigo)],
+      ['Funciones', f => f.funciones], ['Cargos', f => f.cargos]]);
+    h += lista('Unidades modificadas', cmp.unidades_modificadas, [['Unidad', unidad],
+      ['Cambios', f => Object.entries(f.campos).map(([k, v]) =>
+        `<b>${esc(k)}</b>: <del>${esc(v.antes)}</del> &rarr; <ins>${esc(v.despues)}</ins>`).join('<br>') +
+        (f.funciones_eliminadas || f.funciones_agregadas ? `<br>funciones: +${f.funciones_agregadas} <del>-${f.funciones_eliminadas}</del>` : '') +
+        (f.cargos_eliminados || f.cargos_agregados ? `<br>cargos: +${f.cargos_agregados} <del>-${f.cargos_eliminados}</del>` : '')]]);
+    h += lista('Funciones agregadas', cmp.funciones_agregadas, [['Unidad', unidad], ['Funcion', f => `<ins>${esc(f.funcion)}</ins>`]]);
+  }
+  const b = inf.respaldo && inf.respaldo.bajas_en_mof;
+  if (b && (b.unidades.length || b.funciones.length)) {
+    h += lista('Dados de baja dentro de MOF (no entran)', b.unidades,
+      [['Unidad', unidad], ['Funciones', f => f.funciones], ['Dada de baja', f => esc(f.deleted_at)]]);
+    h += lista('Funciones dadas de baja dentro de MOF', b.funciones,
+      [['Unidad', f => esc(f.unidad)], ['Funcion', f => esc(f.funcion)], ['Dada de baja', f => esc(f.deleted_at)]]);
+  }
+  d.innerHTML = h;
+  const bc = $('#confirmar'), bd = $('#descartar');
+  if (bc) bc.onclick = async () => { await accion(`/api/mof/respaldo/trabajos/${t.id}/confirmar`, 'POST'); ver(t.id); };
+  if (bd) bd.onclick = async () => { await accion(`/api/mof/respaldo/trabajos/${t.id}`, 'DELETE'); ver(t.id); };
+}
+async function accion(ruta, metodo) {
+  try { await api(ruta, {method: metodo}); }
+  catch (err) { alert(err.message); }
+}
+refrescar();
+</script>
+</body>
+</html>

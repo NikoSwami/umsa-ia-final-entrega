@@ -1,0 +1,22 @@
+# Servicio OCR, motor LIVIANO (por defecto): PP-OCRv5 latino + PP-DocLayoutV3
+# + SLANet+ exportados a ONNX (RapidOCR / RapidLayout / RapidTable). Sin
+# Paddle: ~15 s y <1 GB por pagina en CPU. Ver gaceta_rag/carga/ocr_liviano.py.
+#
+# rapid-layout y rapid-table van APARTE, con --no-deps (requirements-sin-deps.txt):
+# piden opencv-python con interfaz grafica (que choca con el headless de
+# rapidocr) y torch, que solo usa otro modelo de tablas (unitable).
+rapidocr==3.10.0
+onnxruntime==1.31.0
+opencv-python-headless==4.10.0.84
+numpy==2.4.2
+Pillow==12.2.0
+pypdfium2==5.14.0
+pypdf==6.21.1
+omegaconf==2.4.0
+colorlog==6.12.0
+requests==2.34.2
+tqdm==4.70.1
+fastapi==0.136.1
+uvicorn==0.44.0
+python-multipart==0.0.28
+httpx==0.28.1

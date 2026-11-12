@@ -1,0 +1,73 @@
+# Gaceta IA en Docker, MODO API (lo mismo que Ejecutar_App_Colab1.ipynb).
+#
+#   1. copy .env.example .env   y completa la clave de la API (GEMINI_API_KEY...)
+#   2. docker compose up -d --build
+#   3. chat:   http://127.0.0.1:8000
+#      carga:  http://127.0.0.1:8000/carga   (el token sale en: docker compose logs gaceta)
+#      MOF:    http://127.0.0.1:8000/carga-mof  (subir el pg_dump de MOF, mismo token)
+#
+# Entrada de documentos por MCP (Paperless): docker-compose.paperless.yml y DOCKER.md
+# GPU para el OCR:  docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d --build
+# Ver DOCKER.md para respaldar los datos, cambiar de proveedor y el resto.
+name: gaceta-ia
+
+services:
+  gaceta:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    image: gaceta-ia:local
+    # Solo esta maquina: los POST de control y la carga no se exponen a la red.
+    ports:
+      - "127.0.0.1:${GACETA_PUERTO:-8000}:8000"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      GACETA_BACKEND: api
+      OCR_URL: http://ocr:8001
+      # Dentro de un contenedor "127.0.0.1" es el contenedor mismo: el MOF_URL
+      # del .env de escritorio no sirve aqui. Si MOF corre en esta PC, pone
+      # DOCKER_MOF_URL=http://host.docker.internal:3000 en el .env.
+      MOF_URL: ${DOCKER_MOF_URL:-}
+    volumes:
+      # La base (raw, chunks, FAISS, grafos, lo cargado a mano). Un volumen y
+      # no la carpeta de Windows: SQLite en modo WAL no funciona bien sobre
+      # una carpeta compartida con el host. La primera vez se llena con la base
+      # que trae la imagen.
+      - gaceta_datos:/app/gaceta_rag/data
+      # e5 y el reranker que ya tenes en el proyecto (no se bajan de nuevo).
+      - ./modelos_mejoras:/app/modelos_mejoras
+      - gaceta_hf:/home/gaceta/.cache/huggingface
+    depends_on:
+      - ocr
+    restart: unless-stopped
+
+  ocr:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.ocr
+      args:
+        # liviano: ONNX, ~15 s y <1 GB por pagina en CPU (sus modelos van en
+        # la imagen). vl: PaddleOCR-VL, ~5 min y ~8 GB por pagina en CPU; para
+        # usarlo, mejor con GPU (docker-compose.gpu.yml).
+        MOTOR: liviano
+    image: gaceta-ocr:local
+    environment:
+      OCR_MOTOR: liviano
+      OCR_VERSION: ${OCR_VERSION:-v1.5}
+      OCR_DISPOSITIVO: cpu
+    # Sin puerto publicado: solo lo llama la Gaceta por la red interna.
+    expose:
+      - "8001"
+    volumes:
+      # Pesos de PaddleOCR-VL (~2 GB) si se usa el motor vl: se bajan una vez.
+      - ocr_modelos:/home/ocr/.paddlex
+      - ocr_hf:/home/ocr/.cache/huggingface
+    restart: unless-stopped
+
+volumes:
+  gaceta_datos:
+  gaceta_hf:
+  ocr_modelos:
+  ocr_hf:

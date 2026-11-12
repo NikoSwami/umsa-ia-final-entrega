@@ -1,0 +1,14 @@
+# Servicio OCR, motor VL (OCR_MOTOR=vl): PaddleOCR-VL-1.5, el modelo de
+# lenguaje-vision de orc-con-ia-desde-google-colab. Pesado: ~5 min y ~8 GB por
+# pagina en CPU (medido). Tiene sentido con GPU.
+#
+# GPU: en vez de paddlepaddle, instalar
+#   paddlepaddle-gpu==3.2.1 -i https://www.paddlepaddle.org.cn/packages/stable/cu126/
+# (es lo que hace docker/Dockerfile.ocr con --build-arg MOTOR=vl --build-arg PADDLE=gpu).
+paddlepaddle==3.3.1
+paddleocr[doc-parser]==3.7.0
+pypdf==6.21.1
+fastapi==0.136.1
+uvicorn==0.44.0
+python-multipart==0.0.28
+httpx==0.28.1

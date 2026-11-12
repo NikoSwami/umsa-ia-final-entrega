@@ -1,0 +1,101 @@
+# ───────────────────────────────────────────────────────────
+# Entornos y dependencias (se recrean; pesados)
+# ───────────────────────────────────────────────────────────
+venv/
+node/
+node_modules/
+**/node_modules/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# ───────────────────────────────────────────────────────────
+# Modelos de IA (se descargan de HuggingFace; GBs)
+# ───────────────────────────────────────────────────────────
+qwen2.5-7b-instruct-q4/
+modelos_mejoras/
+
+# ───────────────────────────────────────────────────────────
+# Bases v2: AHORA SÍ se versionan (todo el proyecto en el repo).
+#   OJO: faiss_index_v2.bin (~83MB) y chunks_v2.sqlite (~46MB) engordan la
+#   historia de git cada vez que se regeneran. A futuro: Git LFS.
+#   SÍ se versionan: raw/, chunks_v2.sqlite, faiss_index_v2.bin,
+#   faiss_metadata_v2.json, embedding_config_v2.json, grafo_*.json
+# ───────────────────────────────────────────────────────────
+gaceta_rag/data/*.sqlite-shm
+gaceta_rag/data/*.sqlite-wal
+gaceta_rag/data/gaceta.db
+# La replica del organigrama (gaceta_rag/data/mof.sqlite) SI se versiona desde
+# el 1/10/2026. Estuvo ignorada con un argumento razonable —es un espejo de OTRO
+# sistema, caduca sola y se rehace en un minuto—, pero sin ella un clon de main
+# no puede contestar NADA del organigrama: hace falta MOF alcanzable o un
+# respaldo a mano. Son 1,5 MB y la foto sirve igual; se rehace con
+#   python -m gaceta_rag.mof.replica                      (contra MOF)
+#   python -m gaceta_rag.mof.respaldo respaldo.sql        (desde un pg_dump)
+# Lo que SIGUE fuera es el indice semantico, que son ~150 MB (ver abajo).
+#
+# Fichas de texto del organigrama (doc_9NNNNN): son el OTRO
+# destino del mismo espejo. Las escribe la ingesta en caliente o
+#   python -m gaceta_rag.mof.respaldo respaldo.sql --fichas
+# y caducan igual que la replica. El corpus de resoluciones (doc_0NNNNN) SI se
+# versiona; estas no.
+#
+# Ojo con lo que NO se puede ignorar: sus chunks y sus vectores viven DENTRO de
+# chunks_v2.sqlite y faiss_index_v2.bin, que si estan versionados. Por eso, en
+# la maquina que las genera, esos dos archivos quedan modificados en el arbol y
+# no se commitean: regenerar el indice son ~150 MB de historia por un dato que
+# se rehace con el comando de arriba. Con `git add -A` hay que mirar.
+gaceta_rag/data/raw/doc_9*.json
+gaceta_rag/data/*.log
+
+# Carga manual (/carga): los archivos subidos (PDFs originales, el Markdown del
+# OCR) y el estado de cada trabajo. Pueden pesar y traer datos personales. Lo
+# que SI es corpus es el raw que genera cada carga (raw/doc_1NNNNN.json): ese
+# queda como archivo nuevo en el arbol y se versiona igual que el resto.
+gaceta_rag/data/cargas/
+
+# Carga del respaldo de MOF (/carga-mof): el informe de cada carga y la copia
+# de la replica anterior. El .sql se borra al terminar (trae personas y
+# hashes de contraseñas), pero mientras espera confirmacion vive aqui.
+gaceta_rag/data/cargas_mof/
+
+# Archivos que esperan subir por el MCP (docker-compose.paperless.yml).
+entrada/
+
+# Estado del puente con Paperless: que documento es cual y que falta procesar.
+gaceta_rag/data/paperless/
+
+# Entornos propios del servicio OCR (.venv liviano, .venv-vl con Paddle):
+# ver servicio_ocr/README.md
+servicio_ocr/.venv*/
+
+# ───────────────────────────────────────────────────────────
+# Copias-snapshot del grafo visual (duplican el código fuente)
+# ───────────────────────────────────────────────────────────
+graphify/_codigo_fuente/
+graphify/**/cache/
+
+# ───────────────────────────────────────────────────────────
+# Temporales y del sistema
+# ───────────────────────────────────────────────────────────
+# logs que dejan los notebooks al levantar la app (api_gaceta + tunel)
+api.log
+cloudflared.log
+
+*.tmp
+*.json.tmp
+*.json.bak
+*.bak
+Thumbs.db
+.DS_Store
+
+# Configuracion local con secretos (GACETA_ADMIN_TOKEN, credenciales de MOF).
+# El ejemplo SI se versiona: .env.example
+.env
+.env.local
+.env.*.local
+
+!.env.example
+!gaceta_rag/mejoras/*.pyd
+!*.pyd

@@ -1,0 +1,16 @@
+# Dependencias de la imagen de la Gaceta (modo API, sin GPU ni llama-cpp).
+# Mismas versiones que el venv de escritorio (requirements.txt). torch va
+# aparte, desde el indice CPU de PyTorch: el de PyPI trae ~2 GB de CUDA que
+# este contenedor no usa (la busqueda corre en CPU y el LLM es una API).
+fastapi==0.136.1
+uvicorn==0.44.0
+python-multipart==0.0.28
+faiss-cpu==1.13.2
+sentence-transformers==5.3.0
+transformers==5.3.0
+tokenizers==0.22.2
+numpy==2.4.2
+huggingface_hub==1.6.0
+python-dotenv==1.2.2
+httpx==0.28.1
+pypdf==6.21.1
