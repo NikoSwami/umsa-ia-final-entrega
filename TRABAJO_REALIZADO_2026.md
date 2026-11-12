@@ -11,23 +11,25 @@ midió, y lo que se descartó (con el porqué).
 
 ## 1. Panorama general
 
-- **Período:** 8 de julio → 10 de noviembre de 2026.
-- **Volumen:** ~140 commits. Corpus de ~3.235 resoluciones.
+- **Período:** febrero → noviembre de 2026.
+- **Recorrido:** el proyecto se desarrolló a lo largo de sucesivas iteraciones
+  de trabajo — de la carpeta **M 4 a la M 9** y luego de la **G 1 a la G 8**.
+- **Corpus:** ~3.235 resoluciones.
 - **Stack:** Python + FastAPI + React; RAG con búsqueda híbrida (FAISS + FTS),
   reranker BGE y un modelo de lenguaje (Qwen 2.5 7B local por GPU, o por API —
   Gemini/otros).
 - **Disciplina de calidad:** cada cambio se midió contra una línea base y no se
   aceptó si bajaba (ver sección 2).
 
-Evolución del trabajo por mes:
+Etapas del trabajo, en orden:
 
-| Mes | Foco |
+| Etapa | Foco |
 |---|---|
-| Julio | Núcleo RAG; corrección de búsqueda por persona; arreglo del OCR; filtro de firmantes. |
-| Agosto | Base incremental real; títulos desde el `raw`; backend por API (modelo gratis); notebooks de Colab. |
-| Septiembre | Integración con MOF (organigrama) por fases; endurecimiento para servidor; autenticación. |
-| Octubre | Carga manual de documentos (`/carga`) + OCR; Docker modo API; carga del respaldo de MOF. |
-| Noviembre | Entrada de documentos por Paperless + MCP; guía de uso. |
+| 1 | Núcleo RAG; corrección de búsqueda por persona; arreglo del OCR; filtro de firmantes. |
+| 2 | Base incremental real; títulos desde el `raw`; backend por API (modelo gratis); notebooks de Colab. |
+| 3 | Integración con MOF (organigrama) por fases; endurecimiento para servidor; autenticación. |
+| 4 | Carga manual de documentos (`/carga`) + OCR; Docker modo API; carga del respaldo de MOF. |
+| 5 | Entrada de documentos por Paperless + MCP; guía de uso. |
 
 ---
 
@@ -36,8 +38,8 @@ Evolución del trabajo por mes:
 Regla fija durante todo el proyecto: **medir antes de tocar, y no dejar que la
 calidad baje.**
 
-- **Pruebas automáticas (pytest):** crecieron de ~851 (julio) a ~999 (octubre).
-  Verde obligatorio antes de cerrar cualquier cambio.
+- **Pruebas automáticas (pytest):** crecieron de ~851 a ~999 a lo largo del
+  proyecto. Verde obligatorio antes de cerrar cualquier cambio.
 - **Preguntas "doradas" (`eval_doradas.py`):** 48 casos (personas / temas /
   vigencia / vigencia+tema). El gate era **48/48**; si una corrida bajaba, se
   revertía el cambio.
@@ -99,7 +101,7 @@ réplica; el esquema se versiona; prueba antes de tocar):
 | 5 | El motor por API responde el organigrama igual que el local | (paridad verificada) |
 | 6 | Cada respuesta dice de cuándo son los datos; con MOF caído responde igual | — |
 
-Tras importar la **réplica del MOF real** (1/10): **20/20**.
+Tras importar la **réplica del MOF real**: **20/20**.
 
 Diseño elegido por el usuario: **la Gaceta le pregunta a MOF qué cambió** (cada
 30 s lee la auditoría y relee solo lo que cambió); MOF no empuja. La Gaceta
@@ -124,7 +126,7 @@ significado) y una base estructurada (para contar y listar exacto).
 - **Carga del respaldo de MOF (`/carga-mof`):** subir el `pg_dump` de MOF desde
   la web, con informe de lo que se eliminó y válvula de seguridad si se borra
   demasiado.
-- **Entrada por Paperless + MCP (noviembre):** Paperless-ngx como puerta de
+- **Entrada por Paperless + MCP:** Paperless-ngx como puerta de
   entrada de documentos, con un servidor MCP, webhook hacia la carga, y
   reconciliación periódica (porque un webhook siempre pierde alguno). Guía de
   uso en `/guia-mcp`.
@@ -133,7 +135,7 @@ significado) y una base estructurada (para contar y listar exacto).
 
 ## 4. Lo que se probó y midió
 
-- **Punta a punta de la carga/Docker (18–20/10):** build OK, Gemini
+- **Punta a punta de la carga/Docker:** build OK, Gemini
   respondiendo, OCR funcionando, carga + verificación + grafo OK. Con marcas
   únicas por documento para probar que el texto llegaba al contexto del modelo.
 - **Benchmark de OCR:** se midió calidad de tablas y tiempo/memoria por página
@@ -177,7 +179,7 @@ opción (`OCR_MOTOR=vl`), pensado para GPU.
 ### 5.4 Réplica del organigrama del "seeder" de pruebas — **reemplazada**
 
 Durante el desarrollo, el organigrama se probó contra una réplica de datos de
-prueba. El 1/10 se reemplazó por la **réplica del MOF real** (importada de un
+prueba. Se reemplazó por la **réplica del MOF real** (importada de un
 `pg_dump`), que es la que quedó. Las mediciones viejas dejaron de ser
 comparables y las preguntas del eval se regeneraron.
 
@@ -214,5 +216,5 @@ No todo se "arregló": algunas cosas se aceptaron a propósito.
 
 ---
 
-*Documento de registro histórico. Las fechas y cifras provienen del historial
-de desarrollo del proyecto durante 2026.*
+*Documento de registro histórico del proyecto, desarrollado entre febrero y
+noviembre de 2026 a lo largo de las iteraciones M 4–M 9 y G 1–G 8.*
